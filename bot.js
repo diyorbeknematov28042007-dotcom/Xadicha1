@@ -11,8 +11,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const DATABASE_URL = process.env.DATABASE_URL;
 const PORT = process.env.PORT || 3000;
-const ADMIN_IDS = [7153696822, 8013328081];
-
+const ADMIN_IDS = [8013328081, 2005406869];
 // ═══════════════════════════════════════
 // NEON POSTGRESQL
 // ═══════════════════════════════════════
