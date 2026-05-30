@@ -277,7 +277,9 @@ bot.on("message",async(msg)=>{
     const thinking=await bot.sendMessage(c,await T(c,"chat_thinking"));
     const reply=await askGemini(c,msg.text);
     try{await bot.deleteMessage(c,thinking.message_id);}catch(e){}
-    return bot.sendMessage(c,reply,{parse_mode:"Markdown",reply_markup:{inline_keyboard:[[{text:await T(c,"btn_back"),callback_data:"main_menu"}]]}});
+    return bot.sendMessage(id, reply, {
+  reply_markup: {
+    inline_keyboard: [[{ text: await T(id, "btn_back"), callback_data: "main_menu" }]]
   }
 });
 
