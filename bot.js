@@ -36,7 +36,7 @@ async function initDB() {
 async function q(sql,p=[]){return await pool.query(sql,p);}
 async function getSetting(k){const r=await q("SELECT value FROM settings WHERE key=$1",[k]);return r.rows[0]?.value||"";}
 async function setSetting(k,v){await q("INSERT INTO settings(key,value) VALUES($1,$2) ON CONFLICT(key) DO UPDATE SET value=$2",[k,v]);}
-async function upsertUser(msg){const u=msg.from;await q("INSERT INTO users(user_id,first_name,last_name,username) VALUES($1,$2,$3,$4) ON CONFLICT(user_id) DO UPDATE SET first_name=$2,last_name=$3,username=$4",[u.id,u.first_name||"",u.last_name||"",u.username||""]);}
+async function upsertUser(msg){const u=msg.from;await q("INSERT INTO users(user_id,first_name,last_name,username) VALUES($1,$2,$3,$4) ON CONFLICT(user_id) DO UPDATE SET first_name=$2,last_name=$3,username=$4",[u.id,u.first_name,u.last_name,u.username]);}
 async function getUserLang(uid){const r=await q("SELECT lang FROM users WHERE user_id=$1",[uid]);return r.rows[0]?.lang||"uz";}
 async function setUserLang(uid,lang){await q("INSERT INTO users(user_id,lang) VALUES($1,$2) ON CONFLICT(user_id) DO UPDATE SET lang=$2",[uid,lang]);}
 async function getAllUserIds(){return(await q("SELECT user_id FROM users")).rows.map(r=>r.user_id);}
@@ -61,7 +61,7 @@ async function removeForcedChannel(ch){await q("DELETE FROM forced_channels WHER
 async function addContact(t,v){await q("INSERT INTO contacts(type,value) VALUES($1,$2) ON CONFLICT(type) DO UPDATE SET value=$2",[t,v]);}
 async function getContacts(){return(await q("SELECT type,value FROM contacts ORDER BY id")).rows;}
 async function deleteContact(type){await q("DELETE FROM contacts WHERE type=$1",[type]);}
-async function addQuiz(question,a,b,c,d,correct,lang){await q("INSERT INTO quizzes(question,option_a,option_b,option_c,option_d,correct,lang) VALUES($1,$2,$3,$4,$5,$6,$7)",[question,a,b,c,d,correct.toString()[0],lang||"uz"]);}
+async function addQuiz(question,a,b,c,d,correct,lang){await q("INSERT INTO quizzes(question,option_a,option_b,option_c,option_d,correct,lang) VALUES($1,$2,$3,$4,$5,$6,$7)",[question,a,b,c,d,correct.toUpperCase(),lang]);}
 async function getAllQuizzes(){return(await q("SELECT * FROM quizzes ORDER BY id")).rows;}
 async function getQuizById(id){const r=await q("SELECT * FROM quizzes WHERE id=$1",[id]);return r.rows[0]||null;}
 async function countQuizzes(){return parseInt((await q("SELECT COUNT(*) as c FROM quizzes")).rows[0].c);}
@@ -102,7 +102,7 @@ const tr={
     menu:"📋 Выберите:",choose_lang:"🌐 Язык:",lang_set:"✅ Русский.",no_data:"📭 Нет данных.",
     chat_intro:"💬 *Беседа с учёной*\n\nАкадемик Хадича Сулайманова.\n\n_/menu — выход_",
     chat_thinking:"🤔 Думаю...",chat_error:"❌ Ошибка.",subscribe_first:"📢 Подпишитесь:",
-    legacy_stats:"📊 *Наследие:*\n\n📝 {articles}\n📕 {books}\n📘 {textbooks}",
+    legacy_stats:"📊 *Наследие:*\n\n📝 Статьи: {articles}\n📕 Труды: {books}\n📘 Учебники: {textbooks}",
     admin_only:"⛔️ Только админы.",quiz_correct:"✅ Верно!",quiz_wrong:"❌ Неверно. Ответ: {correct}",
     quiz_done:"🏆 *Тест!*\n\n✅ {correct}/{total}\n📊 {percent}%",quiz_empty:"📭 Нет тестов.",
     quiz_all_done:"✅ Все вопросы!\n🏆 {correct}/{total} ({percent}%)",voice_empty:"📭 Нет аудио.",
@@ -116,7 +116,7 @@ const tr={
     menu:"📋 Choose:",choose_lang:"🌐 Language:",lang_set:"✅ English.",no_data:"📭 No data.",
     chat_intro:"💬 *Chat with Scholar*\n\nAcademician Xadicha Sulaymonova.\n\n_/menu — exit_",
     chat_thinking:"🤔 Thinking...",chat_error:"❌ Error.",subscribe_first:"📢 Subscribe:",
-    legacy_stats:"📊 *Legacy:*\n\n📝 {articles}\n📕 {books}\n📘 {textbooks}",
+    legacy_stats:"📊 *Legacy:*\n\n📝 Articles: {articles}\n📕 Works: {books}\n📘 Textbooks: {textbooks}",
     admin_only:"⛔️ Admins only.",quiz_correct:"✅ Correct!",quiz_wrong:"❌ Wrong. Answer: {correct}",
     quiz_done:"🏆 *Done!*\n\n✅ {correct}/{total}\n📊 {percent}%",quiz_empty:"📭 No quizzes.",
     quiz_all_done:"✅ All done!\n🏆 {correct}/{total} ({percent}%)",voice_empty:"📭 No audio.",
@@ -140,7 +140,7 @@ async function mainMenuKB(c){return{reply_markup:{inline_keyboard:[
   [{text:await T(c,"btn_lang"),callback_data:"change_lang"}],
 ]},parse_mode:"Markdown"};}
 async function backBtnKB(c,to="main_menu"){return{reply_markup:{inline_keyboard:[[{text:await T(c,"btn_back"),callback_data:to}]]},parse_mode:"Markdown"};}
-function langKB(){return{reply_markup:{inline_keyboard:[[{text:"🇺🇿 O'zbekcha",callback_data:"lang_uz"},{text:"🇷🇺 Русский",callback_data:"lang_ru"},{text:"🇬🇧 English",callback_data:"lang_en"}]]}};}
+function langKB(){return{reply_markup:{inline_keyboard:[[{text:"🇺🇿 O'zbekcha",callback_data:"lang_uz"},{text:"🇷🇺 Русский",callback_data:"lang_ru"},{text:"🇬🇧 English",callback_data:"lang_en"}]]}}}
 
 // SUB + STATES
 async function checkSub(c){const chs=await getForcedChannels();if(!chs.length)return true;for(const ch of chs){try{const m=await bot.getChatMember(ch,c);if(["left","kicked"].includes(m.status))return false;}catch(e){}}return true;}
@@ -149,8 +149,8 @@ const chatStates={},adminStates={},quizStates={};
 // GEMINI
 async function askGemini(c,userMsg){
   const lang=await getUserLang(c);const langN={uz:"o'zbek",ru:"russkiy",en:"English"};
-  const sys=`Sen akademik Xadicha Sulaymonova (1913-2995) sifatida javob berasan. Sen ayol olimasan.
-Ma'lumot: 1913 Andijon, 1935 birinchi o'zbek ayol sudya, 1945 nomzodlik (birinchi o'zbek ayol), 1951 doktor, 1952 professor, 1956 akademik, 1956-58 Adliya vaziri, 1959-64 Yuridik komissiya raisi, 1964-74 Jismoniy kultura instituti direktori. Shogird: Yuldashev. O'zin yuridik fanlar doktori.
+  const sys=`Sen akademik Xadicha Sulaymonova (1913-1995) sifatida javob berasan. Sen ayol olimasan.
+Ma'lumot: 1913 Andijon, 1935 birinchi o'zbek ayol sudya, 1945 nomzodlik (birinchi o'zbek ayol), 1951 doktor, 1952 professor, 1956 akademik, 1956-58 Adliya vaziri, 1959-64 Yuridik komissiya raisi, 1964-95 professor. Huquq, jamiyat, femmeninizm haqida bilimli.
 Foydalanuvchi ${langN[lang]} tilida. Shu tilda javob ber. Ayol olima sifatida muloyim, donishmand ustoza.`;
   const history=chatStates[c]?.history||[];const contents=[];
   for(const h of history.slice(-10))contents.push({role:h.role,parts:[{text:h.text}]});
@@ -158,7 +158,7 @@ Foydalanuvchi ${langN[lang]} tilida. Shu tilda javob ber. Ayol olima sifatida mu
   try{
     const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,{
       method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents,generationConfig:{temperature:0.7,maxOutputTokens:1024}}),
+      body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents,generationConfig:{temperature:0.7,maxOutputTokens:2048}}),
     });
     const data=await res.json();const reply=data?.candidates?.[0]?.content?.parts?.[0]?.text||await T(c,"chat_error");
     if(!chatStates[c])chatStates[c]={mode:"chat",history:[]};
@@ -206,17 +206,17 @@ bot.onText(/\/add_website/,async(m)=>{const c=m.chat.id;if(!isAdmin(m.from.id))r
 bot.onText(/\/add_channel (.+)/,async(m,match)=>{if(!isAdmin(m.from.id))return;await addForcedChannel(match[1].trim());bot.sendMessage(m.chat.id,`✅ ${match[1].trim()}`);});
 bot.onText(/\/remove_channel (.+)/,async(m,match)=>{if(!isAdmin(m.from.id))return;await removeForcedChannel(match[1].trim());bot.sendMessage(m.chat.id,"✅");});
 bot.onText(/\/broadcast/,async(m)=>{const c=m.chat.id;if(!isAdmin(m.from.id))return;adminStates[c]={action:"broadcast"};bot.sendMessage(c,"📢 Xabar:");});
-bot.onText(/\/stats/,async(m)=>{const c=m.chat.id;if(!isAdmin(m.from.id))return;const t=await countUsers(),td=await countTodayUsers(),ls=await getLangStats(),a=await countLegacy("articles"),b=await countLegacy("books"),tb=await countLegacy("textbooks"),p=await countPhotos(),mem=await countMemories(),quiz=await countQuizzes(),v=await countVoice();let msg=`📊 *STATS*\n\n👥 Jami: ${t}\n🆕 Bugun: ${td}\n\n🌐 Til:\nO'zbekcha: ${ls.uz||0}\nРусский: ${ls.ru||0}\nEnglish: ${ls.en||0}\n\n📚 Ilmiy meros:\n📝 Maqolalar: ${a}\n📕 Asarlar: ${b}\n📘 Darsliklar: ${tb}\n\n🖼 Suratlar: ${p}\n🕯 Xotirani: ${mem}\n📝 Quiz: ${quiz}\n🎙 Ovozli: ${v}`;bot.sendMessage(c,msg,{parse_mode:"Markdown"});});
+bot.onText(/\/stats/,async(m)=>{const c=m.chat.id;if(!isAdmin(m.from.id))return;const t=await countUsers(),td=await countTodayUsers(),ls=await getLangStats(),a=await countLegacy("articles"),b=await countLegacy("books"),tb=await countLegacy("textbooks"),p=await countPhotos(),mem=await countMemories(),v=await countVoice(),qz=await countQuizzes();bot.sendMessage(c,`📊 *Statistika*\n\n👥 Foydalanuvchilar: ${t} (bugun: ${td})\n🌐 Tillar: ${JSON.stringify(ls)}\n📝 Maqolalar: ${a}\n📕 Asarlar: ${b}\n📘 Darsliklar: ${tb}\n🖼 Suratlar: ${p}\n🕯 Xotiramiz: ${mem}\n🎙 Ovozli: ${v}\n📝 Testlar: ${qz}`,{parse_mode:"Markdown"});});
 
 // DELETE COMMANDS
 bot.onText(/\/del_article/,async(m)=>{const c=m.chat.id;if(!isAdmin(m.from.id))return;const items=await getLegacy("articles");if(!items.length)return bot.sendMessage(c,"📭 Yo'q");bot.sendMessage(c,"O'chirish:",{reply_markup:{inline_keyboard:items.map(i=>[{text:i.title,callback_data:`del_leg_${i.id}`}])}});});
 bot.onText(/\/del_book/,async(m)=>{const c=m.chat.id;if(!isAdmin(m.from.id))return;const items=await getLegacy("books");if(!items.length)return bot.sendMessage(c,"📭 Yo'q");bot.sendMessage(c,"O'chirish:",{reply_markup:{inline_keyboard:items.map(i=>[{text:i.title,callback_data:`del_leg_${i.id}`}])}});});
 bot.onText(/\/del_textbook/,async(m)=>{const c=m.chat.id;if(!isAdmin(m.from.id))return;const items=await getLegacy("textbooks");if(!items.length)return bot.sendMessage(c,"📭 Yo'q");bot.sendMessage(c,"O'chirish:",{reply_markup:{inline_keyboard:items.map(i=>[{text:i.title,callback_data:`del_leg_${i.id}`}])}});});
-bot.onText(/\/del_photo/,async(m)=>{const c=m.chat.id;if(!isAdmin(m.from.id))return;const items=await getPhotos();if(!items.length)return bot.sendMessage(c,"📭 Yo'q");bot.sendMessage(c,"O'chirish:",{reply_markup:{inline_keyboard:items.map(i=>[{text:i.caption||"📷",callback_data:`del_pho_${i.id}`}])}});});
-bot.onText(/\/del_memory/,async(m)=>{const c=m.chat.id;if(!isAdmin(m.from.id))return;const items=await getMemories();if(!items.length)return bot.sendMessage(c,"📭 Yo'q");bot.sendMessage(c,"O'chirish:",{reply_markup:{inline_keyboard:items.map(i=>[{text:i.caption||i.type,callback_data:`del_mem_${i.id}`}])}});});
+bot.onText(/\/del_photo/,async(m)=>{const c=m.chat.id;if(!isAdmin(m.from.id))return;const items=await getPhotos();if(!items.length)return bot.sendMessage(c,"📭 Yo'q");bot.sendMessage(c,"O'chirish:",{reply_markup:{inline_keyboard:items.map(i=>[{text:i.caption||"Surat",callback_data:`del_pho_${i.id}`}])}});});
+bot.onText(/\/del_memory/,async(m)=>{const c=m.chat.id;if(!isAdmin(m.from.id))return;const items=await getMemories();if(!items.length)return bot.sendMessage(c,"📭 Yo'q");bot.sendMessage(c,"O'chirish:",{reply_markup:{inline_keyboard:items.map(i=>[{text:i.caption||"Xotira",callback_data:`del_mem_${i.id}`}])}});});
 bot.onText(/\/del_contact/,async(m)=>{const c=m.chat.id;if(!isAdmin(m.from.id))return;const items=await getContacts();if(!items.length)return bot.sendMessage(c,"📭 Yo'q");bot.sendMessage(c,"O'chirish:",{reply_markup:{inline_keyboard:items.map(i=>[{text:i.type,callback_data:`del_con_${i.type}`}])}});});
 bot.onText(/\/del_quiz/,async(m)=>{const c=m.chat.id;if(!isAdmin(m.from.id))return;const items=await getAllQuizzes();if(!items.length)return bot.sendMessage(c,"📭 Yo'q");bot.sendMessage(c,"O'chirish:",{reply_markup:{inline_keyboard:items.map(i=>[{text:i.question.substring(0,30),callback_data:`del_qz_${i.id}`}])}});});
-bot.onText(/\/del_voice/,async(m)=>{const c=m.chat.id;if(!isAdmin(m.from.id))return;const items=await getVoiceMessages();if(!items.length)return bot.sendMessage(c,"📭 Yo'q");bot.sendMessage(c,"O'chirish:",{reply_markup:{inline_keyboard:items.map(i=>[{text:i.title,callback_data:`del_vc_${i.id}`}])}});});
+bot.onText(/\/del_voice/,async(m)=>{const c=m.chat.id;if(!isAdmin(m.from.id))return;const items=await getVoiceMessages();if(!items.length)return bot.sendMessage(c,"📭 Yo'q");bot.sendMessage(c,"O'chirish:",{reply_markup:{inline_keyboard:items.map(i=>[{text:i.title||"Ovoz",callback_data:`del_vc_${i.id}`}])}});});
 
 // CALLBACKS
 bot.on("callback_query",async(cb)=>{
@@ -227,16 +227,16 @@ bot.on("callback_query",async(cb)=>{
   if(d==="main_menu"){chatStates[c]=null;quizStates[c]=null;return bot.sendMessage(c,await T(c,"menu"),await mainMenuKB(c));}
   if(d==="chat"){chatStates[c]={mode:"chat",history:[]};return bot.sendMessage(c,await T(c,"chat_intro"),await backBtnKB(c));}
   if(d==="bio"){const l=await getUserLang(c);let bio=await getSetting(`biography_${l}`);if(!bio)bio=await getSetting("biography_uz");if(!bio)return bot.sendMessage(c,await T(c,"no_data"),await backBtnKB(c));return bot.sendMessage(c,bio,await backBtnKB(c));}
-  if(d==="legacy"){const a=await countLegacy("articles"),b=await countLegacy("books"),tb=await countLegacy("textbooks");return bot.sendMessage(c,(await T(c,"legacy_stats")).replace("{articles}",a).replace("{books}",b).replace("{textbooks}",tb),{reply_markup:{inline_keyboard:[[{text:await T(c,"btn_articles"),callback_data:"leg_articles"}],[{text:await T(c,"btn_books"),callback_data:"leg_books"}],[{text:await T(c,"btn_textbooks"),callback_data:"leg_textbooks"}],[{text:await T(c,"btn_back"),callback_data:"main_menu"}]]},parse_mode:"Markdown"});}
-  if(d.startsWith("leg_")){const type=d.replace("leg_",""),items=await getLegacy(type);if(!items.length)return bot.sendMessage(c,await T(c,"no_data"),await backBtnKB(c,"legacy"));for(const i of items){try{if(i.file_id)await bot.sendDocument(c,i.file_id,{caption:`📄 ${i.title}\n\n${i.description||""}`});}catch(e){}}return bot.sendMessage(c,await T(c,"menu"),await backBtnKB(c,"legacy"));}
-  if(d==="photos"){const ps=await getPhotos();if(!ps.length)return bot.sendMessage(c,await T(c,"no_data"),await backBtnKB(c));for(const p of ps){try{await bot.sendPhoto(c,p.file_id,{caption:p.caption||""});}catch(e){}}return bot.sendMessage(c,await T(c,"menu"),await backBtnKB(c));}
-  if(d==="memory"){const ms=await getMemories();if(!ms.length)return bot.sendMessage(c,await T(c,"no_data"),await backBtnKB(c));for(const m of ms){if(m.type==="photo"&&m.file_id){try{await bot.sendPhoto(c,m.file_id,{caption:m.caption||""});}catch(e){}}else if(m.type==="url"&&m.url){await bot.sendMessage(c,`<a href='${m.url}'>${m.caption||m.url}</a>`,{parse_mode:"HTML"});}}return bot.sendMessage(c,await T(c,"menu"),await backBtnKB(c));}
-  if(d==="contacts"){const rows=await getContacts();if(!rows.length)return bot.sendMessage(c,await T(c,"no_data"),await backBtnKB(c));const icons={instagram:"📷",telegram:"✈️",facebook:"📘",youtube:"▶️",twitter:"🐦",phone:"☎️",email:"📧"};let msg="";for(const r of rows)msg+=`${icons[r.type]||"▪️"} ${r.type}: ${r.value}\n`;return bot.sendMessage(c,msg,await backBtnKB(c));}
-  if(d==="scholarship"){const l=await getUserLang(c);let s=await getSetting(`scholarship_${l}`);if(!s)s=await getSetting("scholarship_uz");const fid=await getSetting(`scholarship_file_${l}`)||await getSetting("scholarship_file_uz");if(s)bot.sendMessage(c,s,{parse_mode:"Markdown"});if(fid)await bot.sendDocument(c,fid);return bot.sendMessage(c,await T(c,"menu"),await backBtnKB(c));}
+  if(d==="legacy"){const a=await countLegacy("articles"),b=await countLegacy("books"),tb=await countLegacy("textbooks");return bot.sendMessage(c,(await T(c,"legacy_stats")).replace("{articles}",a).replace("{books}",b).replace("{textbooks}",tb),{reply_markup:{inline_keyboard:[[{text:await T(c,"btn_articles"),callback_data:"leg_articles"},{text:await T(c,"btn_books"),callback_data:"leg_books"},{text:await T(c,"btn_textbooks"),callback_data:"leg_textbooks"}],[{text:await T(c,"btn_back"),callback_data:"main_menu"}]]},parse_mode:"Markdown"});}
+  if(d.startsWith("leg_")){const type=d.replace("leg_",""),items=await getLegacy(type);if(!items.length)return bot.sendMessage(c,await T(c,"no_data"),await backBtnKB(c,"legacy"));for(const i of items){if(i.file_id)try{await bot.sendDocument(c,i.file_id,{caption:`📄 ${i.title}\n\n${i.description||""}`});}catch(e){}}bot.sendMessage(c,"✅",await backBtnKB(c,"legacy"));}
+  if(d==="photos"){const ps=await getPhotos();if(!ps.length)return bot.sendMessage(c,await T(c,"no_data"),await backBtnKB(c));for(const p of ps){try{await bot.sendPhoto(c,p.file_id,{caption:p.caption||""});}catch(e){}}bot.sendMessage(c,"✅",await backBtnKB(c));}
+  if(d==="memory"){const ms=await getMemories();if(!ms.length)return bot.sendMessage(c,await T(c,"no_data"),await backBtnKB(c));for(const m of ms){if(m.type==="photo"&&m.file_id){try{await bot.sendPhoto(c,m.file_id,{caption:m.caption||""});}catch(e){}}else if(m.type==="url"&&m.url){bot.sendMessage(c,`🕯 [Link](${m.url})`,{parse_mode:"Markdown"});}}bot.sendMessage(c,"✅",await backBtnKB(c));}
+  if(d==="contacts"){const rows=await getContacts();if(!rows.length)return bot.sendMessage(c,await T(c,"no_data"),await backBtnKB(c));const icons={instagram:"📷",telegram:"✈️",facebook:"📘",youtube:"🎥",email:"📧",phone:"☎️"};let msg="📞 *Bog'lanish:*\n\n";for(const r of rows)msg+=`${icons[r.type.toLowerCase()]||"▪️"} [${r.type}](${r.value})\n`;bot.sendMessage(c,msg,{parse_mode:"Markdown",...await backBtnKB(c)});}
+  if(d==="scholarship"){const l=await getUserLang(c);let s=await getSetting(`scholarship_${l}`);if(!s)s=await getSetting("scholarship_uz");const fid=await getSetting(`scholarship_file_${l}`)||await getSetting("scholarship_file_uz");if(s)bot.sendMessage(c,s,await backBtnKB(c));if(fid)try{await bot.sendDocument(c,fid);}catch(e){}return;}
   if(d==="quiz"){chatStates[c]=null;return startQuiz(c);}
-  if(d.startsWith("qz_")){const parts=d.split("_"),qid=parseInt(parts[1]),ans=parts[2];const quiz=await getQuizById(qid);if(!quiz)return;const ok=ans===quiz.correct;await saveQuizResult(c,qid,ans,ok);quizStates[c].cur++;if(ok)quizStates[c].correct++;await bot.sendMessage(c,ok?await T(c,"quiz_correct"):((await T(c,"quiz_wrong")).replace("{correct}",quiz.correct)),{parse_mode:"Markdown"});await sendNextQuiz(c);}
-  if(d==="voice"){const vs=await getVoiceMessages();if(!vs.length)return bot.sendMessage(c,await T(c,"voice_empty"),await backBtnKB(c));for(const v of vs){let cap="";if(v.title)cap+=`🎙 *${v.title}*`;if(v.description)cap+=`\n${v.description}`;try{await bot.sendVoice(c,v.file_id,{caption:cap,parse_mode:"Markdown"});}catch(e){}}return bot.sendMessage(c,await T(c,"menu"),await backBtnKB(c));}
-  if(d==="website"){const url=await getSetting("website_url");if(!url)return bot.sendMessage(c,await T(c,"no_data"),await backBtnKB(c));return bot.sendMessage(c,"🌐",{reply_markup:{inline_keyboard:[[{text:"Saytga o'tish",url:url}],[{text:await T(c,"btn_back"),callback_data:"main_menu"}]]}})}
+  if(d.startsWith("qz_")){const parts=d.split("_"),qid=parseInt(parts[1]),ans=parts[2];const quiz=await getQuizById(qid);if(!quiz)return;const ok=ans===quiz.correct;await saveQuizResult(c,qid,ans,ok);const msg=ok?await T(c,"quiz_correct"):((await T(c,"quiz_wrong")).replace("{correct}",quiz.correct));bot.sendMessage(c,msg);st=quizStates[c];if(st){st.cur++;if(ok)st.correct++;sendNextQuiz(c);}return;}
+  if(d==="voice"){const vs=await getVoiceMessages();if(!vs.length)return bot.sendMessage(c,await T(c,"voice_empty"),await backBtnKB(c));for(const v of vs){let cap="";if(v.title)cap+=`🎙 *${v.title}*\n`;if(v.description)cap+=`${v.description}`;try{await bot.sendAudio(c,v.file_id,{caption:cap||"",parse_mode:"Markdown"});}catch(e){}}bot.sendMessage(c,"✅",await backBtnKB(c));}
+  if(d==="website"){const url=await getSetting("website_url");if(!url)return bot.sendMessage(c,await T(c,"no_data"),await backBtnKB(c));return bot.sendMessage(c,"🌐",{reply_markup:{inline_keyboard:[[{text:"🔗 Saytga o'tish",url:url}],[{text:await T(c,"btn_back"),callback_data:"main_menu"}]]}})}
   // Admin
   if(d.startsWith("adm_bio_")){adminStates[c]={action:"bio_text",lang:d.replace("adm_bio_","")};return bot.sendMessage(c,"Matn yuboring:");}
   if(d.startsWith("adm_sch_")){const lang=d.replace("adm_sch_","");adminStates[c]={action:"sch_text",lang,fileId:adminStates[c]?.fileId||""};return bot.sendMessage(c,`Stipendiya matnini (${lang.toUpperCase()}) yuboring:`);}
@@ -259,17 +259,17 @@ bot.on("message",async(msg)=>{
     const st=adminStates[c];
     if(st.action==="bio_text"&&msg.text){await setSetting(`biography_${st.lang}`,msg.text);adminStates[c]=null;return bot.sendMessage(c,"✅ Saqlandi.");}
     if(st.action==="legacy_step1"&&msg.document){adminStates[c].fileId=msg.document.file_id;adminStates[c].action="legacy_step2";return bot.sendMessage(c,"✅ PDF qabul qilindi.\n`Sarlavha | Tavsif | Yil | Til`",{parse_mode:"Markdown"});}
-    if(st.action==="legacy_step2"&&msg.text){const p=msg.text.split("|").map(s=>s.trim());if(!p[0])return bot.sendMessage(c,"❌ Sarlavha kerak");await addLegacy(st.type,p[0],p[1]||"",p[2]||"",p[3]||"uz",st.fileId);adminStates[c]=null;return bot.sendMessage(c,"✅ Saqlandi.");}
+    if(st.action==="legacy_step2"&&msg.text){const p=msg.text.split("|").map(s=>s.trim());if(!p[0])return bot.sendMessage(c,"❌ Sarlavha kerak");await addLegacy(st.type,p[0],p[1]||"",p[2]||"",p[3]||"uz",st.fileId||"");adminStates[c]=null;return bot.sendMessage(c,"✅ Saqlandi");}
     if(st.action==="add_photo"&&msg.photo){await addPhoto(msg.photo[msg.photo.length-1].file_id,msg.caption||"");adminStates[c]=null;return bot.sendMessage(c,"✅");}
     if(st.action==="add_memory"){if(msg.photo){await addMemory("photo",msg.photo[msg.photo.length-1].file_id,null,msg.caption||"");adminStates[c]=null;return bot.sendMessage(c,"✅");}else if(msg.text){await addMemory("url",null,msg.text,msg.caption||"");adminStates[c]=null;return bot.sendMessage(c,"✅");}}
     if(st.action==="add_contact"&&msg.text){const p=msg.text.split("|").map(s=>s.trim());if(p.length<2)return bot.sendMessage(c,"❌");await addContact(p[0].toLowerCase(),p[1]);adminStates[c]=null;return bot.sendMessage(c,"✅");}
     if(st.action==="sch_step1"&&msg.document){adminStates[c]={action:"sch_step1_lang",fileId:msg.document.file_id};return bot.sendMessage(c,"✅ PDF qabul qilindi.\nTil tanlang:",{reply_markup:{inline_keyboard:[[{text:"🇺🇿",callback_data:"adm_sch_uz"},{text:"🇷🇺",callback_data:"adm_sch_ru"},{text:"🇬🇧",callback_data:"adm_sch_en"}]]}});}
     if(st.action==="sch_text"&&msg.text){await setSetting(`scholarship_${st.lang}`,msg.text);if(st.fileId)await setSetting(`scholarship_file_${st.lang}`,st.fileId);adminStates[c]=null;return bot.sendMessage(c,"✅ Saqlandi.");}
-    if(st.action==="add_quiz"&&msg.text){const lines=msg.text.split("\n").map(l=>l.trim()).filter(Boolean);if(lines.length<6)return bot.sendMessage(c,"❌ 6 qator kerak");const question=lines[0],a=lines[1].split(")")[1],b=lines[2].split(")")[1],cc=lines[3].split(")")[1],d=lines[4].split(")")[1],correct=lines[5].split(":")[1],lang=lines[6]?.split(":")[1]||"uz";await addQuiz(question,a,b,cc,d,correct,lang);adminStates[c]=null;return bot.sendMessage(c,"✅");}
+    if(st.action==="add_quiz"&&msg.text){const lines=msg.text.split("\n").map(l=>l.trim()).filter(Boolean);if(lines.length<6)return bot.sendMessage(c,"❌ 6 qator kerak");const question=lines[0],a=lines[1].replace(/^A\)\s*/,""),b=lines[2].replace(/^B\)\s*/,""),c_=lines[3].replace(/^C\)\s*/,""),d=lines[4].replace(/^D\)\s*/,""),correctLine=lines[5],langLine=lines[6];const correct=correctLine.split(":")[1].trim().toUpperCase(),lang=langLine.split(":")[1].trim().toLowerCase();await addQuiz(question,a,b,c_,d,correct,lang);adminStates[c]=null;return bot.sendMessage(c,"✅ Saqlandi");}
     if(st.action==="voice_step1"&&(msg.voice||msg.audio)){adminStates[c]={action:"voice_step2",fileId:msg.voice?msg.voice.file_id:msg.audio.file_id};return bot.sendMessage(c,"✅ Ovoz qabul qilindi.\n`Sarlavha | Tavsif | Til`",{parse_mode:"Markdown"});}
     if(st.action==="voice_step2"&&msg.text){const p=msg.text.split("|").map(s=>s.trim());await addVoiceMsg(p[0]||"Ovozli",st.fileId,p[1]||"",p[2]||"uz");adminStates[c]=null;return bot.sendMessage(c,"✅ Saqlandi.");}
     if(st.action==="add_website"&&msg.text){await setSetting("website_url",msg.text.trim());adminStates[c]=null;return bot.sendMessage(c,`✅ ${msg.text.trim()}`);}
-    if(st.action==="broadcast"){adminStates[c]=null;const uids=await getAllUserIds();let s=0,f=0;await bot.sendMessage(c,`📤 ${uids.length}...`);for(const uid of uids){try{if(msg.text)await bot.sendMessage(uid,msg.text,{parse_mode:"Markdown"});if(msg.photo)await bot.sendPhoto(uid,msg.photo[msg.photo.length-1].file_id,{caption:msg.caption});if(msg.document)await bot.sendDocument(uid,msg.document.file_id);s++;}catch(e){f++;}}return bot.sendMessage(c,`✅ ${s} / ❌ ${f}`);}
+    if(st.action==="broadcast"){adminStates[c]=null;const uids=await getAllUserIds();let s=0,f=0;await bot.sendMessage(c,`📤 ${uids.length}...`);for(const uid of uids){try{if(msg.text)await bot.sendMessage(uid,msg.text,{parse_mode:"Markdown"});if(msg.photo)await bot.sendPhoto(uid,msg.photo[msg.photo.length-1].file_id);if(msg.document)await bot.sendDocument(uid,msg.document.file_id);s++;}catch(e){f++;}}bot.sendMessage(c,`✅ ${s}/${uids.length}`);}
   }
 
   // AI Chat
